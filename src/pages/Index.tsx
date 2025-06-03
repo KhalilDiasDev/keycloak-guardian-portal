@@ -30,6 +30,22 @@ const HealthFlow = () => {
     setPatients([]);
   };
 
+  // Simular retorno do Keycloak (em produção, processar o código de autorização)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code && !isAuthenticated) {
+      // Em produção, trocar o código por token usando a API do Keycloak
+      console.log('Código de autorização recebido:', code);
+      setIsAuthenticated(true);
+      loadPatients();
+      
+      // Limpar URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [isAuthenticated]);
+
   const loadPatients = () => {
     const mockPatients: Patient[] = [
       {
@@ -70,6 +86,40 @@ const HealthFlow = () => {
     patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     patient.condition.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Verificar se as configurações estão disponíveis
+  if (!keycloakConfig) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 p-3 bg-red-100 rounded-full w-fit">
+              <Heart className="h-8 w-8 text-red-600" />
+            </div>
+            <CardTitle className="text-2xl text-red-800">Erro de Configuração</CardTitle>
+            <CardDescription className="text-red-600">
+              Configurações do Keycloak não encontradas
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-sm text-red-800 mb-2">
+                <strong>Verifique se o arquivo .env contém:</strong>
+              </p>
+              <ul className="text-sm text-red-700 space-y-1">
+                <li>• VITE_KEYCLOAK_SERVER_URL</li>
+                <li>• VITE_KEYCLOAK_REALM</li>
+                <li>• VITE_KEYCLOAK_CLIENT_ID</li>
+              </ul>
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              Reinicie o servidor de desenvolvimento após configurar o .env
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isAuthenticated) {
     return (
@@ -237,7 +287,7 @@ const HealthFlow = () => {
               <span className="text-xl font-bold text-white">HealthFlow</span>
             </div>
             <Button 
-              onClick={handleLogin}
+              onClick={handleKeycloakLogin}
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
             >
               <LogIn className="h-4 w-4 mr-2" />
@@ -270,7 +320,7 @@ const HealthFlow = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
-                onClick={handleLogin}
+                onClick={handleKeycloakLogin}
                 size="lg" 
                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105"
               >
@@ -385,7 +435,7 @@ const HealthFlow = () => {
               Junte-se aos profissionais que já transformaram sua prática médica com nossa tecnologia.
             </p>
             <Button 
-              onClick={handleLogin}
+              onClick={handleKeycloakLogin}
               size="lg" 
               className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-4 text-lg font-semibold shadow-2xl hover:shadow-green-500/25 transition-all duration-300 transform hover:scale-105"
             >
