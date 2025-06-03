@@ -491,7 +491,7 @@ const Index = () => {
             </div>
             <div className="group">
               <div className="text-4xl md:text-5xl font-bold text-transparent bg-gradient-to-r from-green-400 to-purple-400 bg-clip-text mb-2 group-hover:scale-110 transition-transform duration-300">
-                
+               
               </div>
               <p className="text-gray-300">Tempo de Resposta</p>
             </div>
