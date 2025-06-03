@@ -10,9 +10,10 @@ import { Settings, Save, TestTube } from 'lucide-react';
 
 interface KeycloakConfigProps {
   onClose: () => void;
+  onConfigSaved?: (config: { serverUrl: string; realm: string; clientId: string }) => void;
 }
 
-const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
+const KeycloakConfig = ({ onClose, onConfigSaved }: KeycloakConfigProps) => {
   const [config, setConfig] = useState({
     serverUrl: 'http://localhost:8080',
     realm: 'master',
@@ -54,8 +55,17 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
   };
 
   const handleSave = () => {
-    // Em produção, salvar as configurações no localStorage ou banco de dados
+    // Salvar as configurações no localStorage
     localStorage.setItem('keycloak-config', JSON.stringify(config));
+    
+    // Chamar callback se fornecido
+    if (onConfigSaved) {
+      onConfigSaved({
+        serverUrl: config.serverUrl,
+        realm: config.realm,
+        clientId: config.clientId
+      });
+    }
     
     toast({
       title: "Configurações salvas",
@@ -78,19 +88,19 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Configurações do Servidor</CardTitle>
+              <CardTitle className="text-lg">Configurações do Cliente</CardTitle>
               <CardDescription>
-                Configure a conexão com o servidor Keycloak
+                Configure a conexão com o seu cliente Keycloak
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="serverUrl">URL do Servidor</Label>
+                <Label htmlFor="serverUrl">URL do Servidor Keycloak</Label>
                 <Input
                   id="serverUrl"
                   value={config.serverUrl}
                   onChange={(e) => handleInputChange('serverUrl', e.target.value)}
-                  placeholder="http://localhost:8080"
+                  placeholder="https://seu-keycloak.com"
                 />
               </div>
 
@@ -100,7 +110,7 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
                   id="realm"
                   value={config.realm}
                   onChange={(e) => handleInputChange('realm', e.target.value)}
-                  placeholder="master"
+                  placeholder="seu-realm"
                 />
               </div>
 
@@ -110,7 +120,7 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
                   id="clientId"
                   value={config.clientId}
                   onChange={(e) => handleInputChange('clientId', e.target.value)}
-                  placeholder="admin-cli"
+                  placeholder="seu-client-id"
                 />
               </div>
             </CardContent>
@@ -118,14 +128,14 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Credenciais de Administrador</CardTitle>
+              <CardTitle className="text-lg">Credenciais de Administrador (Opcional)</CardTitle>
               <CardDescription>
-                Credenciais para acessar a API administrativa do Keycloak
+                Para operações administrativas via API
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="adminUsername">Nome de Usuário</Label>
+                <Label htmlFor="adminUsername">Nome de Usuário Admin</Label>
                 <Input
                   id="adminUsername"
                   value={config.adminUsername}
@@ -135,7 +145,7 @@ const KeycloakConfig = ({ onClose }: KeycloakConfigProps) => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="adminPassword">Senha</Label>
+                <Label htmlFor="adminPassword">Senha Admin</Label>
                 <Input
                   id="adminPassword"
                   type="password"

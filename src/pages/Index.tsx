@@ -1,11 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, Users, Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Shield, Users, Plus, Search, LogIn } from 'lucide-react';
 import UserRegistrationForm from '@/components/UserRegistrationForm';
 import UserEditForm from '@/components/UserEditForm';
 import UserTable from '@/components/UserTable';
@@ -21,6 +20,12 @@ interface User {
   createdTimestamp: number;
 }
 
+interface KeycloakConfig {
+  serverUrl: string;
+  realm: string;
+  clientId: string;
+}
+
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
@@ -29,25 +34,53 @@ const Index = () => {
   const [showEditForm, setShowEditForm] = useState(false);
   const [showConfig, setShowConfig] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [keycloakConfig, setKeycloakConfig] = useState<KeycloakConfig | null>(null);
   const { toast } = useToast();
 
-  // Mock authentication - em produção, integrar com Keycloak
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    loadUsers();
-    toast({
-      title: "Login realizado com sucesso",
-      description: "Bem-vindo ao painel de administração",
-    });
+  useEffect(() => {
+    // Carregar configurações do Keycloak do localStorage
+    const savedConfig = localStorage.getItem('keycloak-config');
+    if (savedConfig) {
+      const config = JSON.parse(savedConfig);
+      setKeycloakConfig({
+        serverUrl: config.serverUrl,
+        realm: config.realm,
+        clientId: config.clientId
+      });
+    }
+  }, []);
+
+  // Função para redirecionar para o Keycloak
+  const handleKeycloakLogin = () => {
+    if (!keycloakConfig) {
+      toast({
+        title: "Configuração necessária",
+        description: "Configure o Keycloak antes de fazer login",
+        variant: "destructive",
+      });
+      setShowConfig(true);
+      return;
+    }
+
+    const { serverUrl, realm, clientId } = keycloakConfig;
+    const redirectUri = encodeURIComponent(window.location.origin);
+    const keycloakLoginUrl = `${serverUrl}/realms/${realm}/protocol/openid-connect/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid`;
+    
+    window.location.href = keycloakLoginUrl;
   };
 
   const handleLogout = () => {
+    if (!keycloakConfig) return;
+
+    const { serverUrl, realm } = keycloakConfig;
+    const redirectUri = encodeURIComponent(window.location.origin);
+    const keycloakLogoutUrl = `${serverUrl}/realms/${realm}/protocol/openid-connect/logout?redirect_uri=${redirectUri}`;
+    
     setIsAuthenticated(false);
     setUsers([]);
-    toast({
-      title: "Logout realizado",
-      description: "Você foi desconectado com segurança",
-    });
+    
+    // Redirecionar para logout do Keycloak
+    window.location.href = keycloakLogoutUrl;
   };
 
   const loadUsers = () => {
@@ -83,6 +116,27 @@ const Index = () => {
     ];
     setUsers(mockUsers);
   };
+
+  // Simular retorno do Keycloak (em produção, processar o código de autorização)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code && !isAuthenticated) {
+      // Em produção, trocar o código por token usando a API do Keycloak
+      console.log('Código de autorização recebido:', code);
+      setIsAuthenticated(true);
+      loadUsers();
+      
+      // Limpar URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      toast({
+        title: "Login realizado com sucesso",
+        description: "Bem-vindo ao painel de administração",
+      });
+    }
+  }, [isAuthenticated]);
 
   const handleUserCreated = (user: User) => {
     setUsers([...users, user]);
@@ -139,17 +193,25 @@ const Index = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuário</Label>
-              <Input id="username" placeholder="Digite seu usuário" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input id="password" type="password" placeholder="Digite sua senha" />
-            </div>
-            <Button onClick={handleLogin} className="w-full">
-              Entrar
+            <p className="text-center text-gray-600 mb-6">
+              Para acessar o sistema, você será redirecionado para o Keycloak
+            </p>
+            
+            <Button 
+              onClick={handleKeycloakLogin} 
+              className="w-full"
+              disabled={!keycloakConfig}
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              Entrar via Keycloak
             </Button>
+            
+            {!keycloakConfig && (
+              <p className="text-sm text-amber-600 text-center">
+                Configure o Keycloak primeiro
+              </p>
+            )}
+            
             <Button 
               variant="outline" 
               className="w-full" 
@@ -161,7 +223,10 @@ const Index = () => {
         </Card>
 
         {showConfig && (
-          <KeycloakConfig onClose={() => setShowConfig(false)} />
+          <KeycloakConfig 
+            onClose={() => setShowConfig(false)} 
+            onConfigSaved={(config) => setKeycloakConfig(config)}
+          />
         )}
       </div>
     );
@@ -229,7 +294,7 @@ const Index = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Trash2 className="h-8 w-8 text-red-600" />
+                <Shield className="h-8 w-8 text-red-600" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Usuários Inativos</p>
                   <p className="text-2xl font-bold text-gray-900">
@@ -299,7 +364,10 @@ const Index = () => {
       )}
 
       {showConfig && (
-        <KeycloakConfig onClose={() => setShowConfig(false)} />
+        <KeycloakConfig 
+          onClose={() => setShowConfig(false)} 
+          onConfigSaved={(config) => setKeycloakConfig(config)}
+        />
       )}
     </div>
   );
